@@ -19,13 +19,17 @@ import { Input } from "@/components/ui/input"
 import CustomInput from './CustomInput';
 import { authFormSchema } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { signIn, signUp } from '@/lib/actions/user.actions';
 
 const AuthForm = ({ type }: { type: string }) => {
+    const router = useRouter()
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(false)
+    const formSchema = authFormSchema(type)
     // 1. Define your form.
-  const form = useForm<z.infer<typeof authFormSchema>>({
-    resolver: zodResolver(authFormSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: ""
@@ -33,12 +37,27 @@ const AuthForm = ({ type }: { type: string }) => {
   })
  
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof authFormSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true)
-    console.log(values)
-    setIsLoading(false)
+
+    try {
+        //ingresar con Appwrite y creamos un plaid token link
+        if (type === 'sign-up'){
+            const newUser = await signUp(data);
+            setUser(newUser);
+        }
+        if (type === 'sign-in'){
+            const response = await signIn({
+                email: data.email,
+                password: data.password,
+            })
+            if(response) router.push('/')
+        }
+    } catch (error) {
+        console.log(error)
+    } finally {
+        setIsLoading(false)
+    }
   }
     return (
         <section className='auth-form'>
@@ -79,8 +98,27 @@ const AuthForm = ({ type }: { type: string }) => {
                 <>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                            
-                            <CustomInput control={form.control} name='email' label='Email' placeholder='Ingresa tu Usuario'/>
+                            {type === 'sign-up' && (
+                                <>
+                                    <div className='flex gap-4'>
+                                        <CustomInput control={form.control} name='firts_name' label='Nombre' placeholder='Ingresa tu nombre'/>
+                                        <CustomInput control={form.control} name='last_name' label='Apellido' placeholder='Ingresa tu apellido'/>
+                                    </div>
+
+                                    <CustomInput control={form.control} name='address1' label='Dirección' placeholder='Ingresa tu dirección'/>
+                                    <CustomInput control={form.control} name='city' label='Cuidad' placeholder='Ingresa tu Cuidad'/>
+                                    <div className='flex gap-4'>
+                                        <CustomInput control={form.control} name='state' label='Comuna' placeholder='Example: Melipilla'/>
+                                        <CustomInput control={form.control} name='postalCode' label='Codigo Postal' placeholder='Example: 8000000'/>
+                                    </div>
+                                    <div className='flex gap-4'>
+                                        <CustomInput control={form.control} name='dateOfBith' label='Fecha de Nacimiento' placeholder='DD-MM-AAAA'/>
+                                        <CustomInput control={form.control} name='ssn' label='Numero' placeholder='Example: 1234'/>                                        
+                                    </div>
+                                </>
+                            )}
+
+                            <CustomInput control={form.control} name='email' label='Email' placeholder='Ingresa tu Correo'/>
                             <CustomInput control={form.control} name='password' label='Contraseña' placeholder='Ingresa tu Contraseña'/>
                             <div className='flex flex-col gap-4'>
                                 <Button type="submit" disabled={isLoading} className='form-btn'>{isLoading ? (
